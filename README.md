@@ -1,259 +1,143 @@
-# Customer Churn MLOps Pipeline — FastAPI, Docker & CI/CD
+# Customer Churn MLOps — FastAPI, Docker & CI/CD
 
-An end-to-end MLOps project for customer-churn prediction. The repository documents a collaborative pipeline for data validation, model training and evaluation, model lineage, container packaging, and deployment.
+An educational MLOps project for customer-churn prediction, combining data validation, model training and evaluation, model lineage, container packaging, and a FastAPI inference service.
 
-**My individual contribution is documented separately:** the Kubernetes deployment and continuous-delivery mini-project described below. The core churn pipeline was developed collaboratively with the contributors listed at the end of this README.
+This repository is part of my personal portfolio. It documents two clearly separated types of work:
 
-## Project at a glance
+- **Collaborative work:** the customer-churn pipeline, developed with a project team.
+- **My individual work:** a Kubernetes deployment and continuous-delivery mini-project, described in its own section below.
 
-- **Problem:** predict customer churn for the fictional Saldes Mobil AB case study.
-- **API:** FastAPI prediction service with health and prediction endpoints.
-- **ML workflow:** scikit-learn model training, evaluation, and threshold analysis.
-- **Data quality:** Pandera schema validation and statistical drift checks.
-- **Tracking and lineage:** MLflow experiment tracking and model registry, plus commit and dataset-hash metadata.
-- **Delivery:** GitHub Actions, Docker, automated smoke tests, and GitHub Container Registry (GHCR).
-- **Deployment:** Kubernetes manifests and a gated deployment workflow in the individual mini-project section.
+The collaborative repository is maintained separately by the team: [LeoLindqvist123/ci-cd-pipeline](https://github.com/LeoLindqvist123/ci-cd-pipeline). This README update changes **only this repository**.
 
-> The company and customer data used in this educational project are fictional.
+> Saldes Mobil AB and the customer data are fictional and used for an educational case study.
 
-## Architecture
+## Project overview
+
+The pipeline is designed to ensure that incoming data is validated and a candidate model passes evaluation checks before it is packaged for inference.
+
+| Area | Technologies / approach |
+|---|---|
+| API | FastAPI |
+| Machine learning | Python, scikit-learn |
+| Data validation | Pandera |
+| Experiment tracking | MLflow |
+| Testing | pytest, API tests, container smoke tests |
+| Packaging | Docker, multi-stage builds, Buildx caching |
+| CI/CD | GitHub Actions |
+| Container registry | GitHub Container Registry (GHCR) |
+| Individual deployment mini-project | Kubernetes, kind |
+
+## High-level workflow
 
 ```text
 Data delivery
     |
     v
-Pandera schema validation + statistical drift checks
+Schema validation and drift checks
     |
     v
 Tests and model training
     |
     v
-Evaluation + regression gate
+Model evaluation and regression gate
     |
-    +---- rejected candidate --> CI fails; no approved artifact is published
-    |
-    v
-Model artifact + metadata + checksum
+    +---- rejected candidate --> CI fails
     |
     v
-MLflow tracking / model registry
+Model artifact + metadata / lineage
     |
     v
 Docker image build
     |
     v
-Container smoke test
+Container smoke tests
     |
     v
-GHCR image (commit-SHA tag)
+GHCR image
     |
     v
-FastAPI service
+FastAPI inference service
     |
-    v
-POST /predict   GET /health
+    +---- GET  /health
+    +---- POST /predict
 ```
 
-The pipeline is designed so that data validation and tests run before training, and only a model that passes the configured evaluation gates proceeds to packaging.
+## API
 
-## Technology
-
-| Area | Tools |
-|---|---|
-| Language and environment | Python, `uv` |
-| API and validation | FastAPI, Pydantic |
-| Machine learning | scikit-learn |
-| Data quality | Pandera, statistical drift checks |
-| Experiment tracking | MLflow |
-| Testing | pytest, API tests, container smoke tests |
-| Packaging | Docker, multi-stage builds, Docker Buildx |
-| CI/CD | GitHub Actions, GHCR |
-| Deployment mini-project | Kubernetes, `kind` |
-
-## Run locally
-
-### Prerequisites
-
-- Python version compatible with the project's `pyproject.toml`
-- `uv`
-- Docker (for container build and run)
-
-### 1. Clone this repository
-
-```bash
-git clone https://github.com/erfantk25-lab/fastapi-docker-ml-serving.git
-cd fastapi-docker-ml-serving
-```
-
-### 2. Install dependencies
-
-```bash
-uv sync --all-extras
-```
-
-### 3. Run tests
-
-```bash
-uv run pytest
-```
-
-### 4. Train and evaluate the model
-
-```bash
-uv run python -m churn.model
-uv run python -m churn.evaluate
-```
-
-The training workflow writes model and metric artifacts under `outputs/`. The project also includes a seed-variance analysis script:
-
-```bash
-uv run python analysis/seed_variance.py
-```
-
-### 5. Start the FastAPI service
-
-After a model artifact has been generated:
-
-```bash
-uv run uvicorn churn.api:app --reload
-```
-
-Open the interactive API documentation at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
+The FastAPI service exposes:
 
 | Method | Endpoint | Purpose |
 |---|---|---|
 | GET | `/health` | Check API/model availability |
 | POST | `/predict` | Return a churn prediction and probability |
 
-Run the API tests with:
+FastAPI also provides interactive API documentation at `/docs` when the service is running.
 
-```bash
-uv run pytest tests/test_api.py
-```
+## Data quality and model evaluation
 
-## Data validation and drift checks
+The project uses Pandera schema validation to check incoming customer data before model training. The documented CI checks include known-good and known-bad deliveries to verify that invalid data is rejected.
 
-The pipeline uses a Pandera schema to validate incoming customer data before training. The validation workflow includes known-good and known-bad deliveries to demonstrate that invalid data is rejected.
+The model workflow evaluates ROC AUC and accuracy, and reports precision, recall, and F1-score across classification thresholds. A seed-variance analysis was used to understand how much ROC AUC varies across different train/test splits.
 
-A separate statistical drift check compares an incoming delivery with the reference dataset. The documented checks include:
+The documented quality policy uses:
 
-- Minimum row-count sanity check.
-- Numeric feature mean-shift limits expressed in standard deviations.
-- Detection of previously unseen categorical values.
-- Churn target-rate shift checks.
+- An absolute ROC AUC threshold of **0.74**.
+- A separate regression gate allowing a maximum ROC AUC decrease of **0.020** against the approved baseline.
 
-Example:
+These values are project-specific configuration decisions, not universal ML standards. They should be reviewed when the data, features, or model changes.
 
-```bash
-uv run python validation/schema.py data/kundbas.csv
-uv run python -m churn.drift data/kundbas_drift_leverans.csv data/kundbas.csv
-```
+## Model tracking and lineage
 
-## Model evaluation, versioning and lineage
-
-The project evaluates classification performance using ROC AUC and accuracy, and also reports precision, recall and F1-score across classification thresholds.
-
-A documented seed-variance analysis ran the same model across 30 train/test splits. Based on that analysis, the project uses a project-specific absolute ROC AUC gate of **0.74**. A separate regression gate compares a candidate with an approved baseline and allows a maximum ROC AUC decrease of **0.020**.
-
-These are project configuration choices, not universal ML quality standards. They should be reassessed when the data, features or model change.
-
-For traceability, the training workflow records metadata including:
+The documented pipeline records model metadata to improve traceability, including:
 
 - Git commit identifier.
 - Dataset filename and SHA-256 hash.
 - Evaluation metrics.
 - MLflow run identifier when tracking is enabled.
 
-The model artifact is accompanied by a SHA-256 checksum. Integrity is checked before evaluation, packaging, scoring, and API loading. A checksum detects accidental or unauthorized artifact changes when the checksum itself remains trusted; it is not a digital signature.
+The workflow also uses artifact integrity checks so that changes to a model file can be detected when its trusted checksum is available.
 
-## MLflow experiment tracking
+## Docker and CI/CD
 
-MLflow is an optional tracking integration. When `MLFLOW_TRACKING_URI` is configured, training runs log parameters, metrics, lineage tags and the trained model.
+The collaborative pipeline documents a delivery flow that:
 
-Example local setup using SQLite:
+1. Runs tests and data validation.
+2. Trains and evaluates a candidate model.
+3. Applies model quality and regression gates.
+4. Builds a Docker image.
+5. Starts the container and performs smoke tests against the API.
+6. Publishes a verified image to GHCR from the configured main-branch workflow.
 
-```bash
-MLFLOW_TRACKING_URI=sqlite:///mlflow.db uv run python -m churn.model
-MLFLOW_TRACKING_URI=sqlite:///mlflow.db uv run python -m churn.register
-uv run mlflow ui --backend-store-uri sqlite:///mlflow.db
-```
+The Docker setup includes a multi-stage build, a non-root runtime user, a health check, and Buildx layer caching.
 
-Then open [http://127.0.0.1:5000](http://127.0.0.1:5000).
-
-The repository documents an important limitation: a fresh SQLite tracking database in each CI run does not provide a persistent registry history across runs. A shared tracking server would be needed for that.
-
-## Docker packaging and CI delivery
-
-The GitHub Actions workflow packages the approved model and FastAPI service into a Docker image. The documented delivery steps include:
-
-1. Download the approved model artifact.
-2. Build the Docker image.
-3. Start the container and run a smoke test against `/health` and `/predict`.
-4. Publish the verified image to GHCR on pushes to the main branch, tagged with the commit SHA and `latest`.
-
-The Docker configuration uses a multi-stage build, a non-root runtime user, a container health check, and Buildx GitHub Actions layer caching.
-
-The project README records an observed comparison of approximately **39% smaller uncompressed image size** and **30% faster measured build duration** after the optimization. These are results reported for the collaborative project, not an individual performance claim.
+The team reported approximately **39% smaller uncompressed Docker images** and **30% faster measured builds** after optimization. These are collaborative project results, not individual performance claims.
 
 ## My individual work: Kubernetes deployment mini-project
 
-In addition to the collaborative pipeline, I completed an **individual Kubernetes deployment and continuous-delivery mini-project** that extends the service towards a production-style deployment.
+Separately from the collaborative pipeline, I completed an **individual Kubernetes deployment and continuous-delivery mini-project** for the inference service.
 
-The documented work includes:
+The individual work documented in this repository includes:
 
-- Kubernetes Deployment and Service manifests in `k8s/`.
-- Immutable container image reference pinned to a full commit SHA.
-- CPU and memory requests and limits designed to fit the course namespace quota.
+- Kubernetes Deployment and Service manifests.
+- Container image references pinned to a full commit SHA.
+- CPU and memory requests and limits.
 - Readiness and liveness probes using the API health endpoint.
-- Restricted security context, non-root execution, and dropped Linux capabilities.
-- Multi-architecture Docker images for `linux/amd64` and `linux/arm64`.
-- RollingUpdate strategy with two replicas, zero unavailable replicas, and one surge pod.
-- GitHub Actions deployment job restricted to pushes to `main` and protected by manual approval through a GitHub Environment.
-- Rollout verification and documented rollback using `kubectl rollout undo`.
+- A restricted security context, non-root execution, and dropped Linux capabilities.
+- Multi-architecture container images for `linux/amd64` and `linux/arm64`.
+- A RollingUpdate strategy with two replicas, zero unavailable replicas, and one surge pod.
+- A GitHub Actions deployment job restricted to pushes to `main` and protected by manual approval through a GitHub Environment.
+- Rollout verification and a documented rollback using `kubectl rollout undo`.
 
-The deployment was tested in both local `kind` and the course cluster, as documented in the project work. The monitoring and drift-response section describes an operational plan; it should not be interpreted as a claim that a complete production monitoring service is already running.
-
-## Repository structure
-
-```text
-.
-├── .github/
-│   ├── actions/
-│   └── workflows/
-├── analysis/
-├── config/
-├── data/
-├── docs/
-├── k8s/
-├── src/
-│   └── churn/
-├── tests/
-├── validation/
-├── Dockerfile
-├── pyproject.toml
-├── uv.lock
-└── README.md
-```
-
-Some generated artifacts and local tracking files are created at runtime and may not be committed.
+The deployment work was tested in local `kind` and the course cluster, as documented in the project. The monitoring and drift-response material describes an operational plan; it should not be read as a claim that a complete production monitoring service is running.
 
 ## What I learned
 
-- Designing quality gates that stop invalid data and underperforming models before release.
-- Tracking model artifacts back to the code commit and exact dataset version.
-- Separating model evaluation from packaging and deployment.
-- Building and smoke-testing containerized inference services.
-- Using immutable image tags, health probes, resource limits and rolling updates in Kubernetes.
-- Distinguishing team-level delivery outcomes from my own individual implementation work.
-
-## Collaborators
-
-The collaborative churn-pipeline work was completed with:
-
-- [Erfan Tahmasbi](https://github.com/erfantk25-lab)
-- [Lilit Ajoyan](https://github.com/LAjoyan)
-- [Leo Lindqvist Kröhnert](https://github.com/LeoLindqvist123)
-- [Josefin Lesley](https://github.com/Josefin3647)
+- Designing data and model quality gates before release.
+- Connecting model artifacts to source-code and dataset versions.
+- Separating model evaluation, image packaging, and deployment.
+- Building and smoke-testing a containerized inference API.
+- Applying Kubernetes health probes, resource limits, immutable image references, and rolling updates.
+- Clearly distinguishing my individual implementation from team-level outcomes.
 
 ## Related links
 
@@ -263,4 +147,4 @@ The collaborative churn-pipeline work was completed with:
 
 ---
 
-*Educational portfolio project. The repository documents both collaborative pipeline development and a separately identified individual Kubernetes mini-project.*
+*Educational portfolio project. Collaborative pipeline work and my individual Kubernetes mini-project are intentionally presented as separate contributions.*
