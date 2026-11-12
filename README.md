@@ -506,3 +506,7 @@ The `deploy` job in `.github/workflows/ci.yml` runs only on pushes to `main` (`i
 
 ### AI Usage Disclosure
 AI tools were used as a sounding board to structure Kubernetes manifests (`deployment.yaml`, `service.yaml`) within `student-quota`, diagnose the `aarch64` vs `x86_64` architecture mismatch (`exec format error`) and configure multi-arch Buildx builds in GitHub Actions, and refine the documentation. All configurations, rollouts, and rollbacks were tested and verified in both `kind` and the course cluster.
+
+## Documentation
+
+- [Architecture overview](docs/architecture.md)
