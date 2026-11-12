@@ -1,275 +1,176 @@
-# CI/CD - Pipeline
+# Customer Churn MLOps Pipeline — FastAPI, Docker & CI/CD
 
-This repository contains the MLOps pipeline for predicting [customer churn for Saldes Mobil AB](https://github.com/saldes-education/saldes-mobil-churn).
-It includes data validation, model training, and an automated CI/CD pipeline.
+An end-to-end MLOps project for customer-churn prediction. The repository documents a collaborative pipeline for data validation, model training and evaluation, model lineage, container packaging, and deployment.
 
-## 🚀 Quick Start (Local Setup)
+**My individual contribution is documented separately:** the Kubernetes deployment and continuous-delivery mini-project described below. The core churn pipeline was developed collaboratively with the contributors listed at the end of this README.
 
-This project uses `uv` for lightning-fast dependency management. To set up your local environment:
+## Project at a glance
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/LeoLindqvist123/ci-cd-pipeline.git
-   cd ci-cd-pipeline
-   ```
-2. Sync the environment and install all dependencies (including dev, data and MLflow tracking tools):
-   ```bash
-   uv sync --all-extras
-   ```
-3. Run your tests or scripts directly using `uv run`:
+- **Problem:** predict customer churn for the fictional Saldes Mobil AB case study.
+- **API:** FastAPI prediction service with health and prediction endpoints.
+- **ML workflow:** scikit-learn model training, evaluation, and threshold analysis.
+- **Data quality:** Pandera schema validation and statistical drift checks.
+- **Tracking and lineage:** MLflow experiment tracking and model registry, plus commit and dataset-hash metadata.
+- **Delivery:** GitHub Actions, Docker, automated smoke tests, and GitHub Container Registry (GHCR).
+- **Deployment:** Kubernetes manifests and a gated deployment workflow in the individual mini-project section.
+
+> The company and customer data used in this educational project are fictional.
+
+## Architecture
+
+```text
+Data delivery
+    |
+    v
+Pandera schema validation + statistical drift checks
+    |
+    v
+Tests and model training
+    |
+    v
+Evaluation + regression gate
+    |
+    +---- rejected candidate --> CI fails; no approved artifact is published
+    |
+    v
+Model artifact + metadata + checksum
+    |
+    v
+MLflow tracking / model registry
+    |
+    v
+Docker image build
+    |
+    v
+Container smoke test
+    |
+    v
+GHCR image (commit-SHA tag)
+    |
+    v
+FastAPI service
+    |
+    v
+POST /predict   GET /health
+```
+
+The pipeline is designed so that data validation and tests run before training, and only a model that passes the configured evaluation gates proceeds to packaging.
+
+## Technology
+
+| Area | Tools |
+|---|---|
+| Language and environment | Python, `uv` |
+| API and validation | FastAPI, Pydantic |
+| Machine learning | scikit-learn |
+| Data quality | Pandera, statistical drift checks |
+| Experiment tracking | MLflow |
+| Testing | pytest, API tests, container smoke tests |
+| Packaging | Docker, multi-stage builds, Docker Buildx |
+| CI/CD | GitHub Actions, GHCR |
+| Deployment mini-project | Kubernetes, `kind` |
+
+## Run locally
+
+### Prerequisites
+
+- Python version compatible with the project's `pyproject.toml`
+- `uv`
+- Docker (for container build and run)
+
+### 1. Clone this repository
 
 ```bash
-#Example run command
+git clone https://github.com/erfantk25-lab/fastapi-docker-ml-serving.git
+cd fastapi-docker-ml-serving
+```
+
+### 2. Install dependencies
+
+```bash
+uv sync --all-extras
+```
+
+### 3. Run tests
+
+```bash
 uv run pytest
-
-uv run python -m churn.model
-```
-## FastAPI
-
-The API predicts customer churn using the trained model.
-
-Start the API:
-
-```bash
-uv run uvicorn churn.api:app --reload
 ```
 
-Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) to test the endpoints.
-
-- `GET /health` — checks model availability.
-- `POST /predict` — returns a churn prediction and probability.
-
-Run API tests:
-
-```bash
-uv run pytest tests/test_api.py
-```
-
-## ✅ Data Validation
-
-The data is validated against a Pandera schema (`validation/schema.py`) in CI. To run it locally:
-
-```bash
-uv run python validation/schema.py [path/to/file.csv]
-```
-If no file is given, `data/kundbas.csv` is used. For example, to validate a new delivery:
-
-```bash
-uv run python validation/schema.py data/kundbas_ny_leverans.csv
-```
-
-If validation fails, the script lists errors per column and check with a few examples, and exits with code 1, which fails the CI pipeline.
-
-In CI, the `validate` job checks both data files in parallel:
-
-- `kundbas.csv` must **pass**.
-- `kundbas_ny_leverans.csv` must **fail**. It is a known-bad delivery that proves the schema catches errors.
-- `kundbas_drift_leverans.csv` must pass schema validation but fail the drift check.
-
-The validation job verifies that valid data passes schema validation and known-invalid data is rejected. These checks run before model training.
-The `train` job depends on both `test` and `validate` through
-`needs: [test, validate]`. This ensures that model training only
-starts when both jobs have succeeded.
-
-## 📊 Classification Threshold Analysis
-
-The churn model predicts the probability that a customer will leave the company. We evaluate different classification thresholds to understand how they affect the model's predictions.
-
-### What the code does
-
-The function `train_and_evaluate()` in `src/churn/model.py` evaluates five classification thresholds: 0.3, 0.4, 0.5, 0.6, and 0.7.
-
-For each threshold, a customer is classified as likely to churn if their predicted probability is greater than or equal to that threshold.
-
-The model calculates three additional metrics for each threshold:
-
-- **Precision:** Of the customers predicted to churn, how many actually churned?
-- **Recall:** Of all customers who actually churned, how many did the model identify?
-- **F1-score:** A combined measure of precision and recall.
-
-The existing ROC AUC and accuracy metrics are retained.
-
-### How to run
-
-Run the model training and evaluation module:
+### 4. Train and evaluate the model
 
 ```bash
 uv run python -m churn.model
+uv run python -m churn.evaluate
 ```
 
-The evaluation results, including the new threshold-specific metrics, are printed and saved to `outputs/metrics.json`.
-
-### Why it matters
-
-A lower classification threshold may identify more customers who will churn, but it may also produce more false positives. A higher threshold may reduce false positives while missing more actual churners.
-
-Comparing precision, recall, and F1-score helps the team understand these trade-offs before choosing a classification threshold.
-
-The results from different thresholds should be reviewed before selecting a final threshold. For a more rigorous evaluation, select the threshold using validation data and reserve the test data for the final evaluation.
-
-**Note:** Classification thresholds determine how predicted probabilities are converted into churn predictions. They are different from the minimum ROC AUC threshold used by CI to decide whether model evaluation passes or fails.
-
-## 📊 Model Threshold Analysis
-
-The pipeline needs a minimum ROC AUC for the model to pass CI. To choose that
-threshold from data instead of guessing, we measured how much ROC AUC varies
-with the random seed alone.
-
-### What the script does
-
-`analysis/seed_variance.py` trains and evaluates the model 30 times, with seeds 0–29. The data, features and model stay the same.
-Only `SEED` in `churn.model` changes, and it controls the train/test split. Each run therefore evaluates on a different 25 % of the customers.
+The training workflow writes model and metric artifacts under `outputs/`. The project also includes a seed-variance analysis script:
 
 ```bash
 uv run python analysis/seed_variance.py
 ```
 
-### Results (`kundbas.csv`, 30 seeds)
+### 5. Start the FastAPI service
 
-| Statistic          | ROC AUC |
-|--------------------|---------|
-| Min                | 0.746   |
-| Max                | 0.836   |
-| Mean               | 0.783   |
-| Standard deviation | 0.020   |
-| Pipeline (seed 42) | 0.789   |
+After a model artifact has been generated:
 
-Seed 42 is close to the mean. The pipeline's fixed seed is therefore representative and not an unusually lucky split.
+```bash
+uv run uvicorn churn.api:app --reload
+```
 
-### Candidate thresholds
+Open the interactive API documentation at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
 
-All 30 runs use the same data and the same model. They differ only in which
-customers end up in the test set. The spread in ROC AUC (0.746 to 0.836) therefore
-shows how much the score can vary from the split alone, without any change to the model.
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/health` | Check API/model availability |
+| POST | `/predict` | Return a churn prediction and probability |
 
-This affects where the threshold can go:
+Run the API tests with:
 
-- **Inside the spread:** CI may fail a model simply because of an unlucky split.
-- **Far below the spread:** CI may let a model pass even after it has actually got worse.
+```bash
+uv run pytest tests/test_api.py
+```
 
-The table shows how many of the 30 runs would have failed CI with each candidate
-threshold. A run fails if its ROC AUC is below the threshold. Since the model was
-unchanged between runs, these failures are likely caused by variation in the
-train/test split rather than by a worse model. The analysis shows that this
-variation exists, but it cannot prove that every future failure has this cause.
+## Data validation and drift checks
 
-| Candidate                    | Threshold | Runs that would fail |
-|------------------------------|-----------|----------------------|
-| Mean − 1 standard deviation  | 0.763     | 5 / 30               |
-| 10th percentile              | 0.760     | 3 / 30               |
-| 5th percentile               | 0.751     | 2 / 30               |
-| Lowest observed score        | 0.746     | 0 / 30               |
-| Mean − 2 standard deviations | 0.743     | 0 / 30               |
-| Mean − 3 standard deviations | 0.724     | 0 / 30               |
+The pipeline uses a Pandera schema to validate incoming customer data before training. The validation workflow includes known-good and known-bad deliveries to demonstrate that invalid data is rejected.
 
-A lower threshold gives fewer failures caused by the split. The cost is that the
-model's quality has to drop more before CI catches it.
+A separate statistical drift check compares an incoming delivery with the reference dataset. The documented checks include:
 
-### Decision
+- Minimum row-count sanity check.
+- Numeric feature mean-shift limits expressed in standard deviations.
+- Detection of previously unseen categorical values.
+- Churn target-rate shift checks.
 
-The CI threshold is set to **ROC AUC ≥ 0.74**, roughly the mean minus two standard deviations.
+Example:
 
-Motivation:
+```bash
+uv run python validation/schema.py data/kundbas.csv
+uv run python -m churn.drift data/kundbas_drift_leverans.csv data/kundbas.csv
+```
 
-- **No failures in the analysis.** The threshold is below the lowest observed score (0.746), so none of the 30 runs would have failed CI because of the split alone.
-- **Still catches real degradation.** It is only about 0.05 below the pipeline's score (0.789). A clearly worse model would still fail CI.
-- **Standard choice.** Mean − 2 SD is a common rule of thumb, while mean − 3 SD (0.724) would let too large a drop through.
+## Model evaluation, versioning and lineage
 
-The threshold should be revisited if the data, features or model change significantly. In that case, rerun `analysis/seed_variance.py`.
+The project evaluates classification performance using ROC AUC and accuracy, and also reports precision, recall and F1-score across classification thresholds.
 
-### Model Regression Gate
+A documented seed-variance analysis ran the same model across 30 train/test splits. Based on that analysis, the project uses a project-specific absolute ROC AUC gate of **0.74**. A separate regression gate compares a candidate with an approved baseline and allows a maximum ROC AUC decrease of **0.020**.
 
-In addition to the absolute ROC AUC quality threshold, the pipeline
-compares each candidate model against an approved baseline to detect
-unacceptable performance regressions.
+These are project configuration choices, not universal ML quality standards. They should be reassessed when the data, features or model change.
 
-The comparison is implemented in `src/churn/regression_gate.py`.
-The candidate metrics are read from `outputs/metrics.json`, while
-the reference metrics are stored in `config/model_baseline.json`.
+For traceability, the training workflow records metadata including:
 
-The current baseline is the seed-42 reference model with a ROC AUC
-of 0.789. The maximum permitted decrease is 0.020, giving a minimum
-acceptable ROC AUC of 0.769 for the regression check.
+- Git commit identifier.
+- Dataset filename and SHA-256 hash.
+- Evaluation metrics.
+- MLflow run identifier when tracking is enabled.
 
-The regression tolerance is a project-specific policy informed by
-the seed-variance analysis. It is not a universal threshold for ML
-models and should be reviewed if the baseline or data changes.
+The model artifact is accompanied by a SHA-256 checksum. Integrity is checked before evaluation, packaging, scoring, and API loading. A checksum detects accidental or unauthorized artifact changes when the checksum itself remains trusted; it is not a digital signature.
 
-The pipeline applies the existing absolute quality threshold first,
-then runs the regression gate. The model is versioned and passed to
-downstream packaging only if both checks succeed.
+## MLflow experiment tracking
 
-Automated tests cover candidates that pass, candidates that exceed
-the permitted regression, and missing or invalid metrics.
+MLflow is an optional tracking integration. When `MLFLOW_TRACKING_URI` is configured, training runs log parameters, metrics, lineage tags and the trained model.
 
-The baseline should only be updated deliberately after a candidate
-model has been evaluated and approved.
-
-## 📦 Model Versioning & Lineage
-
-Every model that passes the CI quality gate is versioned as a traceable artifact linked to the exact code commit and dataset that produced it.
-
-### How it works
-1. **Metadata & Lineage Generation (`src/churn/model.py`):**
-   When `uv run python -m churn.model` runs, it generates both the trained model (`outputs/model.joblib`) and a metadata file (`outputs/metrics.json`) containing:
-   - **Evaluation metrics:** `roc_auc`, `accuracy`, and threshold-specific metrics (`precision`, `recall`, `f1`).
-   - **Commit traceability:** `commit` (populated from `GITHUB_SHA` in GitHub Actions, or `"local"` when run locally).
-   - **Data traceability:** `data_file` (`kundbas.csv`) and `data_sha256` (a 64-character SHA-256 hash of the dataset's exact contents).
-
-2. **Gated Versioning in CI (`.github/workflows/ci.yml`):**
-   - The `train` job uploads a temporary candidate artifact (`model-candidate-<sha>`, `retention-days: 1`).
-   - The `evaluate` job downloads the candidate, writes the metrics and lineage table to the GitHub Actions **Job Summary**, and runs `uv run python -m churn.evaluate`.
-   - **Only if the model passes the quality threshold** (`ROC AUC >= 0.74`) does CI publish the official versioned artifact `model-<sha>`.
-   - The approved model is also registered in the MLflow Model Registry, see [Experiment Tracking & Model Registry](#-experiment-tracking--model-registry-mlflow).
-
-3. **Automated Lineage Testing (`tests/test_model.py`):**
-   The test `test_model_versioning_metadata` verifies that `model.joblib` and `metrics.json` are created with valid `commit`, `data_file`, `data_sha256`, and evaluation metric fields:
-
-   ```bash
-   uv run pytest tests/test_model.py
-   ```
-
-### Model Artifact Integrity
-
-The pipeline verifies the integrity of the trained model using SHA-256 checksums.
-
-After training, the pipeline saves the model as `outputs/model.joblib` and generates a corresponding `outputs/model.joblib.sha256` checksum file.
-
-Before the model is used, the checksum is verified at the following stages:
-
-- **Evaluation:** verifies the downloaded candidate model before evaluation.
-- **Docker packaging:** verifies the approved model artifact before building the image.
-- **Call-list generation:** verifies the model before scoring customers.
-- **API startup:** verifies the model before loading it into the FastAPI service.
-
-If the model is missing, its checksum is missing, or its contents no longer match the checksum, verification fails. The CI job stops, or the API rejects the model instead of loading it.
-
-Automated tests cover valid artifacts, modified model files, missing files and API behaviour when integrity verification fails.
-
-**Limitation:** This checksum mechanism detects changes when the saved checksum remains trustworthy. It does not independently authenticate the model and checksum if both are replaced.
-
-## 🧪 Experiment Tracking & Model Registry (MLflow)
-
-MLflow is an optional add-on to the versioning above. `metrics.json` and the quality gate in `churn.evaluate` are still the source of truth. MLflow makes every training run searchable and keeps a registry of approved models.
-
-### How it works
-1. **Tracking (`src/churn/tracking.py`):**
-   When `MLFLOW_TRACKING_URI` is set, `uv run python -m churn.model` logs each training run to the experiment `churn` with:
-   - **Params:** `seed`, `test_size`, `classifier`
-   - **Metrics:** all numeric values from `metrics.json` (`roc_auc`, `accuracy`, threshold metrics)
-   - **Tags (lineage):** `commit`, `data_file`, `data_sha256`
-   - **Model:** the trained sklearn pipeline
-
-   The MLflow run id is saved in `outputs/metrics.json` as `mlflow_run_id`, so later steps know exactly which run to register.
-
-2. **Registry (`src/churn/register.py`):**
-   `uv run python -m churn.register` reads `mlflow_run_id` from `metrics.json`, registers the model as a new version of `churn-model` and sets the alias `champion`. It should only run after the quality gate has passed. It exits with code 1 if `mlflow_run_id` is missing or if the model could not be registered (for example when `MLFLOW_TRACKING_URI` is not set).
-
-3. **Optional dependency:**
-   MLflow is installed as the `tracking` extra (`uv sync --all-extras`). It is not part of the Docker image, since the API only needs `model.joblib`. Without `MLFLOW_TRACKING_URI`, training works exactly as before.
-
-### Run locally
-Run from the project root, since `sqlite:///mlflow.db` is a path relative to the current folder:
+Example local setup using SQLite:
 
 ```bash
 MLFLOW_TRACKING_URI=sqlite:///mlflow.db uv run python -m churn.model
@@ -277,232 +178,89 @@ MLFLOW_TRACKING_URI=sqlite:///mlflow.db uv run python -m churn.register
 uv run mlflow ui --backend-store-uri sqlite:///mlflow.db
 ```
 
-Open [http://127.0.0.1:5000](http://127.0.0.1:5000). Runs are under the experiment **churn**, and registered versions under **Registered Models → churn-model**. Local MLflow data (`mlflow.db`, `mlruns/`) is ignored by Git and Docker.
+Then open [http://127.0.0.1:5000](http://127.0.0.1:5000).
 
-### In CI (`.github/workflows/ci.yml`)
-- **`train`** sets `MLFLOW_TRACKING_URI` and uploads `mlflow.db` and `mlruns/` together with `outputs/` in the candidate artifact `model-candidate-<sha>`.
-- **`evaluate`** runs `churn.register` directly after the quality gate. A model below the threshold is never registered.
-- **`evaluate`** uploads `mlflow-tracking-<sha>`, even if the quality gate fails, so anyone in the team can inspect the run (and the registered model, if it passed):
+The repository documents an important limitation: a fresh SQLite tracking database in each CI run does not provide a persistent registry history across runs. A shared tracking server would be needed for that.
 
-```bash
-gh run download <RUN-ID> --pattern "mlflow-tracking-*" --dir ci-mlflow
-cd ci-mlflow   # and into the mlflow-tracking-* folder if one was created
-uv run mlflow ui --backend-store-uri sqlite:///mlflow.db
-```
+## Docker packaging and CI delivery
 
-The CI run is named `train-<short-sha>` and is linked to the exact commit and data hash. For pull requests, the SHA is the merge commit GitHub creates when it tests the branch merged with `main`.
+The GitHub Actions workflow packages the approved model and FastAPI service into a Docker image. The documented delivery steps include:
 
-![MLflow run logged by CI, with metrics, params, lineage tags and the registered model](docs/mlflow_ci_run.png)
+1. Download the approved model artifact.
+2. Build the Docker image.
+3. Start the container and run a smoke test against `/health` and `/predict`.
+4. Publish the verified image to GHCR on pushes to the main branch, tagged with the commit SHA and `latest`.
 
-![churn-model in the MLflow Model Registry, with version 1 as champion](docs/mlflow_registry_champion.png)
+The Docker configuration uses a multi-stage build, a non-root runtime user, a container health check, and Buildx GitHub Actions layer caching.
 
-### Tests
-```bash
-uv run pytest tests/test_tracking.py tests/test_register.py
-```
-- `test_tracking.py`: no logging when tracking is disabled; a logged run has the expected tags, params and metrics.
-- `test_register.py`: no registration when tracking is disabled; a registered model gets version 1 and the `champion` alias; the CLI fails without `mlflow_run_id` and when tracking is disabled.
+The project README records an observed comparison of approximately **39% smaller uncompressed image size** and **30% faster measured build duration** after the optimization. These are results reported for the collaborative project, not an individual performance claim.
 
-The tests that use MLflow run against a temporary SQLite database, so they never touch your local `mlflow.db`, and they are skipped if MLflow is not installed.
+## My individual work: Kubernetes deployment mini-project
 
-### Limitations and next steps
-- **No shared history between CI runs.** Each pipeline run starts with a new SQLite database, so CI always registers version 1. A central MLflow tracking server (set via `MLFLOW_TRACKING_URI` and a GitHub secret) would keep the history. The code does not need to change for that.
-- **Every approved model becomes `champion`.** A natural next step is champion/challenger: a new model only replaces the champion if it is not worse, otherwise it gets the alias `challenger`.
+In addition to the collaborative pipeline, I completed an **individual Kubernetes deployment and continuous-delivery mini-project** that extends the service towards a production-style deployment.
 
-## 🐳 Docker Packaging, Smoke Test & GHCR
+The documented work includes:
 
-The approved churn model and FastAPI service are packaged into a Docker image, verified with an automated smoke test, and published to GitHub Container Registry (`ghcr.io`).
+- Kubernetes Deployment and Service manifests in `k8s/`.
+- Immutable container image reference pinned to a full commit SHA.
+- CPU and memory requests and limits designed to fit the course namespace quota.
+- Readiness and liveness probes using the API health endpoint.
+- Restricted security context, non-root execution, and dropped Linux capabilities.
+- Multi-architecture Docker images for `linux/amd64` and `linux/arm64`.
+- RollingUpdate strategy with two replicas, zero unavailable replicas, and one surge pod.
+- GitHub Actions deployment job restricted to pushes to `main` and protected by manual approval through a GitHub Environment.
+- Rollout verification and documented rollback using `kubectl rollout undo`.
 
-### Build and run locally
-Make sure the model has been trained first (`uv run python -m churn.model`), then build and start the container:
-```bash
-docker build -t churn-api:local .
-docker run -d --name churn-test-service -p 8000:8000 churn-api:local
-```
+The deployment was tested in both local `kind` and the course cluster, as documented in the project work. The monitoring and drift-response section describes an operational plan; it should not be interpreted as a claim that a complete production monitoring service is already running.
 
-### Run the container smoke test
-The smoke test (`tests/smoke_test.py`) polls `GET /health` until the container is ready and verifies that `POST /predict` returns a valid prediction (`0` or `1`) and probability (`0.0–1.0`):
-```bash
-uv run python tests/smoke_test.py http://localhost:8000
-docker rm -f churn-test-service
-```
-
-### CI/CD & GHCR Publishing
-In `.github/workflows/ci.yml`, the `package` job runs after `evaluate`:
-1. Downloads the approved `model-<sha>` artifact.
-2. Builds the Docker image and runs `tests/smoke_test.py` against the live container.
-3. On `push` events to `main`, pushes the verified image to `ghcr.io/leolindqvist123/ci-cd-pipeline/churn-api` tagged with both `<commit-sha>` and `latest`.
-
-### 🚀 Docker Optimization & Resource Management (VG)
-To improve operational reliability, container security, and CI resource utilization, the container deployment pipeline was upgraded:
-- **Multi-Stage Build:** Uses a `builder` stage for dependencies and creates a minimal `runtime` container without build tools (`/bin/uv`) or temporary caches.
-- **Optimized Production Environment:** Installs only production dependencies (`--frozen --no-dev --no-editable`) and strips `__pycache__` and test directories from `.venv`.
-- **Buildx GHA Layer Caching:** Integrates `type=gha` caching in CI to reuse unchanged layers across pipeline runs.
-- **Security & Health Monitoring:** Runs as a dedicated non-root `appuser` and defines a native container `HEALTHCHECK` against `GET /health`.
-
-#### Before and After Metrics
-| Metric | Baseline (Run #76, Single-Stage) | Optimized (Run #96, Multi-Stage + Cache) | Improvement |
-|---|---|---|---|
-| **Uncompressed Image Size** | ~620 MB (measured one-off baseline) | **~378 MB** (runtime-only, no `uv` or caches) | **~39% smaller** (~242 MB saved) |
-| **Build Duration** | 16s (measured one-off baseline) | **11.3s** (cold build) | **~30% faster** |
-| **Image Cleanliness** | Included build tools (`uv`) & caches | Stripped `.venv`, runtime-only | Minimal attack surface |
-| **Security** | Root user, no healthcheck | `appuser` (non-root) + container `HEALTHCHECK` | Least privilege, orchestration-ready |
-
-## 🛡️ Statistical Data Drift & Safe Data Delivery (VG)
-
-To protect the model from retraining on skewed or incomplete data deliveries that still pass static Pandera schema rules, `src/churn/drift.py` compares incoming deliveries against `data/kundbas.csv`:
-- **Volume Sanity Check:** Fails if row count drops below 50% of the reference dataset.
-- **Numeric Feature Drift (`MAX_MEAN_SHIFT_STD = 0.50`):** Fails if any raw numeric feature mean shifts by more than 0.50 standard deviations.
-- **Unseen Categories:** Fails if new categories appear in `region` or `abonnemang`.
-- **Target Rate Drift (`MAX_TARGET_DIFF = 0.15`):** Fails if the churn rate (`avslutat`) shifts by more than 15 percentage points.
-- **CI & Local Usage:** Runs in the `validate` job before `train` on `data/kundbas.csv` (expected: pass) and `data/kundbas_drift_leverans.csv` (passes Pandera schema, expected to fail drift check via `uv run python -m churn.drift data/kundbas_drift_leverans.csv data/kundbas.csv`) and is tested via `uv run python -m pytest tests/test_data.py`.
-
-## 📁 Project Structure
+## Repository structure
 
 ```text
-ci-cd-pipeline/
+.
 ├── .github/
 │   ├── actions/
-│   │   └── setup-project/
-│   │       └── action.yml
 │   └── workflows/
-│       └── ci.yml
 ├── analysis/
-│   └── seed_variance.py
 ├── config/
-│   └── model_baseline.json
 ├── data/
-│   ├── kundbas.csv
-│   ├── kundbas_ny_leverans.csv
-│   └── kundbas_drift_leverans.csv
-├── validation/
-│   └── schema.py
 ├── docs/
-│   ├── fastapi_prediction_prompt.png
-│   ├── fastapi_prediction_response.png
-│   ├── mlflow_ci_run.png
-│   └── mlflow_registry_champion.png
-├── outputs/
-│   ├── model.joblib
-│   ├── metrics.json
-│   ├── model.joblib.sha256
-│   └── call_list.csv
+├── k8s/
 ├── src/
 │   └── churn/
-│         ├── __init__.py
-│         ├── api.py
-│         ├── artifact_integrity.py
-│         ├── data.py
-│         ├── drift.py
-│         ├── evaluate.py
-│         ├── model.py
-│         ├── regression_gate.py
-│         ├── register.py
-│         ├── score.py
-│         └── tracking.py
 ├── tests/
-│   ├── smoke_test.py
-│   ├── test_artifact_integrity.py
-│   ├── test_api.py
-│   ├── test_data.py
-│   ├── test_features.py
-│   ├── test_regression_gate.py
-│   ├── test_model.py
-│   ├── test_register.py
-│   └── test_tracking.py
-├── create_issues.py
-├── issues_followup.json
-├── issues.json
-├── .dockerignore
-├── .gitignore
+├── validation/
 ├── Dockerfile
 ├── pyproject.toml
-├── README.md
-└── uv.lock
+├── uv.lock
+└── README.md
 ```
 
-## 🛠️ Development Roadmap & Task Status
+Some generated artifacts and local tracking files are created at runtime and may not be committed.
 
-*(Team: Please update the status of your assigned tasks below when you merge your PR!)*
+## What I learned
 
-### 1. Infrastructure & Setup
-- [x] Create project board and generate backlog issues
-- [x] Migrate dependency management to `uv` and generate lockfile
+- Designing quality gates that stop invalid data and underperforming models before release.
+- Tracking model artifacts back to the code commit and exact dataset version.
+- Separating model evaluation from packaging and deployment.
+- Building and smoke-testing containerized inference services.
+- Using immutable image tags, health probes, resource limits and rolling updates in Kubernetes.
+- Distinguishing team-level delivery outcomes from my own individual implementation work.
 
-### 2. CI/CD & Testing
-- [x] Verify branch protection and required status checks
-- [x] Set up CI pipeline for code quality (Linting/Formatting)
-- [x] Create Pandera schema for data validation
-- [x] Set up CI pipeline for Pandera data validation tests
-- [x] Set up CI pipeline for model training and unit tests
-- [X] Verify that invalid data blocks training in the actual pipeline
+## Collaborators
 
-### 3. Machine Learning
-- [X] Analyze model thresholds and document findings
-- [ ] Refine feature engineering pipeline
-- [X] Version approved model artifacts with commit and data metadata
-- [X] Verify that failing model evaluation prevents publication
-- [x] Track experiments and register approved models with MLflow (optional step)
+The collaborative churn-pipeline work was completed with:
 
-### 4. Model Serving & FastAPI
+- [Erfan Tahmasbi](https://github.com/erfantk25-lab)
+- [Lilit Ajoyan](https://github.com/LAjoyan)
+- [Leo Lindqvist Kröhnert](https://github.com/LeoLindqvist123)
+- [Josefin Lesley](https://github.com/Josefin3647)
 
-- [X] Add FastAPI prediction endpoint (`POST /predict`)
-- [X] Add health endpoint (`GET /health`)
-- [X] Add automated API tests
-- [X] Document how to run and test the API locally
+## Related links
 
-### 5. Docker & Artifact Publishing
-
-- [x] Create Dockerfile for the model-serving application
-- [x] Build and run the Docker image
-- [x] Add a container smoke test
-- [x] Push verified images to GitHub Container Registry (GHCR)
-- [x] Tag published images with the relevant commit SHA
-
-### 6. Documentation & Final Verification
-
-- [ ] Update README to reflect the completed pipeline
-- [ ] Capture a successful end-to-end pipeline run
-- [ ] Capture a run where invalid data stops validation
-- [ ] Prepare final repository, commit and PR/review links for submission
-
-## 👥 Collaborators
-
-This project is collaboratively developed by:
-* [Lilit Ajoyan](https://github.com/LAjoyan)
-* [Erfan Tahmasebi](https://github.com/erfantk25-lab)
-* [Leo Lindqvist Kröhnert](https://github.com/LeoLindqvist123)
-* [Josefin Lesley](https://github.com/Josefin3647)
+- [My GitHub profile](https://github.com/erfantk25-lab)
+- [My portfolio](https://erfantk25-lab.github.io/)
+- [Collaborative CI/CD repository](https://github.com/LeoLindqvist123/ci-cd-pipeline)
 
 ---
 
-## Kubernetes Deployment & CD (Mini-Project)
-
-In this individual mini-project, the CI/CD pipeline has been extended to production in Kubernetes, running both locally in `kind` and in the course cloud cluster (`mlops-ht26`, namespace `erfan-tahmasbikondroodi`).
-
-### 1. Kubernetes Manifests (`k8s/`)
-- **Immutable Image Tagging (Commit SHA):** The container image in `k8s/deployment.yaml` is pinned to the 40-character commit SHA (`ghcr.io/erfantk25-lab/deployment-i-containeriserad-miljo/churn-api:<commit-sha>`), never `latest`.
-- **Resource Limits & Quota (`student-quota`):** Each pod requests `cpu: 50m, memory: 96Mi` and limits `cpu: 250m, memory: 256Mi`, fitting 2 replicas + 1 surge pod (`150m` CPU, `288Mi` RAM) inside the namespace quota (`250m` CPU / `384Mi` RAM).
-- **Health Probes & Security:** `readinessProbe` and `livenessProbe` query `GET /health` on port `8000`, and `securityContext` enforces `restricted:latest` (`runAsNonRoot: true`, `allowPrivilegeEscalation: false`, `capabilities.drop: ["ALL"]`).
-
-### 2. Multi-Architecture Build (`linux/amd64` & `linux/arm64`)
-Because the cloud worker nodes run on `aarch64` (`linux/arm64`) while local `kind` runs on `x86_64` (`linux/amd64`), the `package` job in `.github/workflows/ci.yml` uses QEMU and Docker Buildx (`--platform linux/amd64,linux/arm64`) so the same image SHA runs in both environments.
-
-### 3. Deployment Strategy (Rolling Update)
-**Selected Strategy:** `RollingUpdate` (`replicas: 2`, `maxUnavailable: 0`, `maxSurge: 1`).
-- **Zero Downtime:** `maxUnavailable: 0` ensures no existing pod is terminated until the new pod passes its `/health` readiness probe, protecting the call list and API consumers.
-- **Quota Efficiency:** Unlike *Blue/Green* (which doubles pod count and exceeds the `384Mi` memory quota) or *Canary* (which requires a service mesh/ingress controller), `RollingUpdate` provides safe incremental rollout and instant rollback (`kubectl rollout undo`) within cluster limits.
-
-### 4. Automated Deployment from the Pipeline (GitHub Actions CD)
-The `deploy` job in `.github/workflows/ci.yml` runs only on pushes to `main` (`if: github.ref == 'refs/heads/main' && github.event_name == 'push'`), requires manual review approval via the `production` GitHub Environment, injects `GITHUB_SHA` into `k8s/deployment.yaml`, and verifies rollout in `erfan-tahmasbikondroodi`.
-
-### 5. Operations, Monitoring, and Drift Management Plan
-1. **Detecting Data Drift:** Batch deliveries are checked via Pandera (`validation/schema.py`) and statistical drift checks (`src/churn/drift.py`, halting if feature means shift > `0.50` SD or new categories appear). In production, `/predict` inputs and predicted probabilities are logged and periodically compared against `data/kundbas.csv`.
-2. **Detecting Model Degradation & Concept Drift:** Pre-deployment candidates must pass both `ROC AUC >= 0.74` (`churn.evaluate`) and `churn.regression_gate` (max `0.020` drop vs `config/model_baseline.json`). Post-deployment, logged predictions are joined with delayed ground-truth outcomes from call-list follow-ups to track realized `ROC AUC`, `Precision`, and `Recall`.
-3. **Response Plan (Alert, Rollback, Retrain):**
-   - **Immediate Post-Release Issue -> Alert & Rollback:** Technical errors, failing `/health` probes, or anomalous prediction distributions trigger an immediate rollback via `kubectl rollout undo deployment/saldes-deployment`.
-   - **Data Drift -> Alert & Retraining:** Verified shifts in customer feature distributions trigger pipeline retraining on fresh data, gated by `evaluate` and `regression_gate`.
-   - **Concept Drift -> Algorithm Upgrade:** If retraining `LogisticRegression` on fresh data fails quality gates due to changing customer behavior, we evaluate switching to a non-linear model (e.g., `HistGradientBoostingClassifier` or `RandomForestClassifier` in `src/churn/model.py`).
-
-### AI Usage Disclosure
-AI tools were used as a sounding board to structure Kubernetes manifests (`deployment.yaml`, `service.yaml`) within `student-quota`, diagnose the `aarch64` vs `x86_64` architecture mismatch (`exec format error`) and configure multi-arch Buildx builds in GitHub Actions, and refine the documentation. All configurations, rollouts, and rollbacks were tested and verified in both `kind` and the course cluster.
+*Educational portfolio project. The repository documents both collaborative pipeline development and a separately identified individual Kubernetes mini-project.*
