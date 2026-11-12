@@ -1,5 +1,7 @@
 # Customer Churn MLOps — FastAPI, Docker & CI/CD
 
+[![CI](https://github.com/erfantk25-lab/fastapi-docker-ml-serving/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/erfantk25-lab/fastapi-docker-ml-serving/actions/workflows/ci.yml) [View all workflow runs](https://github.com/erfantk25-lab/fastapi-docker-ml-serving/actions)
+
 An educational MLOps project for customer-churn prediction, combining data validation, model training and evaluation, model lineage, container packaging, and a FastAPI inference service.
 
 This repository is part of my personal portfolio. It documents two clearly separated types of work:
@@ -113,6 +115,30 @@ The Docker setup includes a multi-stage build, a non-root runtime user, a health
 The team reported approximately **39% smaller uncompressed Docker images** and **30% faster measured builds** after optimization. These are collaborative project results, not individual performance claims.
 
 ## My individual work: Kubernetes deployment mini-project
+
+The following deployment flow summarises the individual Kubernetes exercise (not the shared team pipeline):
+
+```mermaid
+flowchart TD
+    A[FastAPI inference container] --> B[Container image tagged by commit SHA]
+    B --> C[Kubernetes Deployment]
+    C --> D[Pods with resource limits and security context]
+    D --> E[Readiness and liveness probes]
+    C --> F[Kubernetes Service]
+    G[GitHub Actions deployment job] --> C
+    H[Manual approval via GitHub Environment] --> G
+    I[kubectl rollout status] --> J[Verify rollout or rollback]
+```
+
+Example commands used to apply and inspect the manifests in the educational cluster:
+
+```bash
+kubectl apply -f k8s/ -n erfan-tahmasbikondroodi
+kubectl rollout status deployment/saldes-deployment -n erfan-tahmasbikondroodi --timeout=180s
+kubectl get pods,svc,ingress -n erfan-tahmasbikondroodi
+# If a rollout must be reverted:
+kubectl rollout undo deployment/saldes-deployment -n erfan-tahmasbikondroodi
+```
 
 Separately from the collaborative pipeline, I completed an **individual Kubernetes deployment and continuous-delivery mini-project** for the inference service.
 
