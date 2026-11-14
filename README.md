@@ -1,3 +1,9 @@
+<div align="center">
+
+<img src="assets/erfan-customer-churn-mlops-banner.svg" alt="Customer Churn MLOps — Erfan Tahmasebi" width="100%" />
+
+</div>
+
 # CI/CD - Pipeline
 
 This repository contains the MLOps pipeline for predicting [customer churn for Saldes Mobil AB](https://github.com/saldes-education/saldes-mobil-churn).
