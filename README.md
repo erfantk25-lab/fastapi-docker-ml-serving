@@ -10,6 +10,11 @@
 
 </div>
 
+<div align="center">
+
+[OVERVIEW](#project-overview) · [ARCHITECTURE](#high-level-workflow) · [API](#api) · [DATA QUALITY](#data-quality-and-model-evaluation) · [DOCKER & CI/CD](#docker-and-cicd) · [KUBERNETES](#my-individual-work-kubernetes-deployment-mini-project)
+
+</div>
 
 An educational MLOps project for customer-churn prediction, combining data validation, model training and evaluation, model lineage, container packaging, and a FastAPI inference service.
 
