@@ -4,7 +4,7 @@
 
 <div align="center">
 
-<img src="docs/ef-project-banner.svg" alt="EF-branded customer churn MLOps project banner" width="100%"/>
+<img src="docs/ef-project-banner-v2.svg" alt="EF-branded customer churn MLOps project banner" width="100%"/>
 
 ![Python](https://img.shields.io/badge/Python-071B31?style=for-the-badge&logo=python&logoColor=00DFFF) ![FastAPI](https://img.shields.io/badge/FastAPI-071B31?style=for-the-badge&logo=fastapi&logoColor=00DFFF) ![Docker](https://img.shields.io/badge/Docker-071B31?style=for-the-badge&logo=docker&logoColor=00DFFF) ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-071B31?style=for-the-badge&logo=githubactions&logoColor=00DFFF)
 
