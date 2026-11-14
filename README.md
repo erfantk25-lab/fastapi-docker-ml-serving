@@ -2,6 +2,15 @@
 
 [![CI](https://github.com/erfantk25-lab/fastapi-docker-ml-serving/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/erfantk25-lab/fastapi-docker-ml-serving/actions/workflows/ci.yml) [View all workflow runs](https://github.com/erfantk25-lab/fastapi-docker-ml-serving/actions)
 
+<div align="center">
+
+<img src="docs/ef-project-banner.svg" width="100%" alt="EF-branded customer churn MLOps project banner"/>
+
+![Python](https://img.shields.io/badge/Python-071B31?style=for-the-badge&logo=python&logoColor=00DFFF) ![FastAPI](https://img.shields.io/badge/FastAPI-071B31?style=for-the-badge&logo=fastapi&logoColor=00DFFF) ![Docker](https://img.shields.io/badge/Docker-071B31?style=for-the-badge&logo=docker&logoColor=00DFFF) ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-071B31?style=for-the-badge&logo=githubactions&logoColor=00DFFF)
+
+</div>
+
+
 An educational MLOps project for customer-churn prediction, combining data validation, model training and evaluation, model lineage, container packaging, and a FastAPI inference service.
 
 This repository is part of my personal portfolio. It documents two clearly separated types of work:
@@ -31,38 +40,11 @@ The pipeline is designed to ensure that incoming data is validated and a candida
 
 ## High-level workflow
 
-```text
-Data delivery
-    |
-    v
-Schema validation and drift checks
-    |
-    v
-Tests and model training
-    |
-    v
-Model evaluation and regression gate
-    |
-    +---- rejected candidate --> CI fails
-    |
-    v
-Model artifact + metadata / lineage
-    |
-    v
-Docker image build
-    |
-    v
-Container smoke tests
-    |
-    v
-GHCR image
-    |
-    v
-FastAPI inference service
-    |
-    +---- GET  /health
-    +---- POST /predict
-```
+<div align="center">
+<img src="docs/mlops-architecture.svg" width="100%" alt="EF-branded customer churn MLOps architecture from data validation through model quality gates, lineage, Docker, GHCR and FastAPI"/>
+</div>
+
+GitHub Actions coordinates the documented CI workflow. A candidate that fails the quality gate is not passed to the packaging stage. The separate Kubernetes learning exercise is shown in its own lane and explained below.
 
 ## API
 
