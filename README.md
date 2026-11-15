@@ -4,10 +4,9 @@
 
 </div>
 
-# CI/CD - Pipeline
+# Customer Churn MLOps — FastAPI, Docker & Kubernetes
 
-This repository contains the MLOps pipeline for predicting [customer churn for Saldes Mobil AB](https://github.com/saldes-education/saldes-mobil-churn).
-It includes data validation, model training, and an automated CI/CD pipeline.
+An educational MLOps project for predicting [customer churn for Saldes Mobil AB](https://github.com/saldes-education/saldes-mobil-churn). It combines data validation, model training and evaluation, model artifact lineage, a FastAPI inference service, Docker packaging, automated CI/CD, and an individually documented Kubernetes deployment mini-project.
 
 ## 🚀 Quick Start (Local Setup)
 
