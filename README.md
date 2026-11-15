@@ -6,29 +6,34 @@
 
 # Customer Churn MLOps — FastAPI, Docker & Kubernetes
 
-An educational MLOps project for predicting [customer churn for Saldes Mobil AB](https://github.com/saldes-education/saldes-mobil-churn). It combines data validation, model training and evaluation, model artifact lineage, a FastAPI inference service, Docker packaging, automated CI/CD, and an individually documented Kubernetes deployment mini-project.
+An educational MLOps project for predicting [customer churn for Saldes Mobil AB](https://github.com/saldes-education/saldes-mobil-churn). It combines data validation, model training and evaluation, model artifact lineage, a FastAPI inference service, Docker packaging, automated CI/CD, and an individually documented Kubernetes deployment mini-project. The repository includes reproducible local commands and automated checks so the pipeline can be inspected without deploying it to a cluster.
 
-## 🚀 Quick Start (Local Setup)
+## 🚀 Quick Start
 
-This project uses `uv` for lightning-fast dependency management. To set up your local environment:
+**Prerequisites:** Python 3.11–3.13 and [uv](https://docs.astral.sh/uv/getting-started/installation/).
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/LeoLindqvist123/ci-cd-pipeline.git
-   cd ci-cd-pipeline
-   ```
-2. Sync the environment and install all dependencies (including dev, data and MLflow tracking tools):
-   ```bash
-   uv sync --all-extras
-   ```
-3. Run your tests or scripts directly using `uv run`:
+Clone this repository (not the original team repository), then install the locked dependencies:
 
 ```bash
-#Example run command
-uv run pytest
+git clone https://github.com/erfantk25-lab/fastapi-docker-ml-serving.git
+cd fastapi-docker-ml-serving
+uv sync --all-extras
+```
 
+Run the same code-quality and test checks used in CI:
+
+```bash
+uv run ruff check .
+uv run pytest
+```
+
+Train the model and generate its local artifacts:
+
+```bash
 uv run python -m churn.model
 ```
+
+The training step creates the model and metrics under `outputs/`. Start the API after training using the command in the [FastAPI section](#fastapi).
 ## FastAPI
 
 The API predicts customer churn using the trained model.
@@ -336,7 +341,7 @@ docker rm -f churn-test-service
 In `.github/workflows/ci.yml`, the `package` job runs after `evaluate`:
 1. Downloads the approved `model-<sha>` artifact.
 2. Builds the Docker image and runs `tests/smoke_test.py` against the live container.
-3. On `push` events to `main`, pushes the verified image to `ghcr.io/leolindqvist123/ci-cd-pipeline/churn-api` tagged with both `<commit-sha>` and `latest`.
+3. On `push` events to `main`, pushes the verified image to `ghcr.io/erfantk25-lab/fastapi-docker-ml-serving/churn-api` tagged with both `<commit-sha>` and `latest`.
 
 ### 🚀 Docker Optimization & Resource Management (VG)
 To improve operational reliability, container security, and CI resource utilization, the container deployment pipeline was upgraded:
