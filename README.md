@@ -8,14 +8,18 @@
 
 ## 🧰 Technology Stack
 
-![Python](https://img.shields.io/badge/Python-071B31?style=for-the-badge&logo=python&logoColor=FFD43B)
-![Pandera](https://img.shields.io/badge/Pandera-071B31?style=for-the-badge&logo=python&logoColor=00DFFF)
-![scikit-learn](https://img.shields.io/badge/scikit-learn-071B31?style=for-the-badge&logo=scikitlearn&logoColor=F7931E)
-![MLflow](https://img.shields.io/badge/MLflow-071B31?style=for-the-badge&logo=mlflow&logoColor=0194E2)
-![FastAPI](https://img.shields.io/badge/FastAPI-071B31?style=for-the-badge&logo=fastapi&logoColor=009688)
-![Docker](https://img.shields.io/badge/Docker-071B31?style=for-the-badge&logo=docker&logoColor=2496ED)
-![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-071B31?style=for-the-badge&logo=githubactions&logoColor=2088FF)
-![Kubernetes](https://img.shields.io/badge/Kubernetes-071B31?style=for-the-badge&logo=kubernetes&logoColor=326CE5)
+<div align="center">
+
+  <a href="https://www.python.org/" title="Python"><img src="https://cdn.simpleicons.org/python/3776AB" alt="Python" height="42"></a>
+  <a href="https://pandera.readthedocs.io/" title="Pandera"><img src="https://raw.githubusercontent.com/unionai-oss/pandera/main/docs/source/_static/pandera-favicon.png" alt="Pandera" height="42"></a>
+  <a href="https://scikit-learn.org/" title="scikit-learn"><img src="https://cdn.simpleicons.org/scikitlearn/F7931E" alt="scikit-learn" height="42"></a>
+  <a href="https://mlflow.org/" title="MLflow"><img src="https://cdn.simpleicons.org/mlflow/0194E2" alt="MLflow" height="42"></a>
+  <a href="https://fastapi.tiangolo.com/" title="FastAPI"><img src="https://cdn.simpleicons.org/fastapi/009688" alt="FastAPI" height="42"></a>
+  <a href="https://www.docker.com/" title="Docker"><img src="https://cdn.simpleicons.org/docker/2496ED" alt="Docker" height="42"></a>
+  <a href="https://github.com/features/actions" title="GitHub Actions"><img src="https://cdn.simpleicons.org/githubactions/2088FF" alt="GitHub Actions" height="42"></a>
+  <a href="https://kubernetes.io/" title="Kubernetes"><img src="https://cdn.simpleicons.org/kubernetes/326CE5" alt="Kubernetes" height="42"></a>
+
+</div>
 
 An educational MLOps project for predicting [customer churn for Saldes Mobil AB](https://github.com/saldes-education/saldes-mobil-churn). It combines data validation, model training and evaluation, model artifact lineage, a FastAPI inference service, Docker packaging, automated CI/CD, and an individually documented Kubernetes deployment mini-project. The repository includes reproducible local commands and automated checks so the pipeline can be inspected without deploying it to a cluster.
 
