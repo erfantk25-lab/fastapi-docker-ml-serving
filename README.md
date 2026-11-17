@@ -6,6 +6,17 @@
 
 # Customer Churn MLOps — FastAPI, Docker & Kubernetes
 
+## 🧰 Technology Stack
+
+![Python](https://img.shields.io/badge/Python-071B31?style=for-the-badge&logo=python&logoColor=FFD43B)
+![Pandera](https://img.shields.io/badge/Pandera-071B31?style=for-the-badge&logo=python&logoColor=00DFFF)
+![scikit-learn](https://img.shields.io/badge/scikit-learn-071B31?style=for-the-badge&logo=scikitlearn&logoColor=F7931E)
+![MLflow](https://img.shields.io/badge/MLflow-071B31?style=for-the-badge&logo=mlflow&logoColor=0194E2)
+![FastAPI](https://img.shields.io/badge/FastAPI-071B31?style=for-the-badge&logo=fastapi&logoColor=009688)
+![Docker](https://img.shields.io/badge/Docker-071B31?style=for-the-badge&logo=docker&logoColor=2496ED)
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-071B31?style=for-the-badge&logo=githubactions&logoColor=2088FF)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-071B31?style=for-the-badge&logo=kubernetes&logoColor=326CE5)
+
 An educational MLOps project for predicting [customer churn for Saldes Mobil AB](https://github.com/saldes-education/saldes-mobil-churn). It combines data validation, model training and evaluation, model artifact lineage, a FastAPI inference service, Docker packaging, automated CI/CD, and an individually documented Kubernetes deployment mini-project. The repository includes reproducible local commands and automated checks so the pipeline can be inspected without deploying it to a cluster.
 
 ## 🏗️ Architecture
