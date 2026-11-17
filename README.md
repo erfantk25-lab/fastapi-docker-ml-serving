@@ -8,6 +8,15 @@
 
 An educational MLOps project for predicting [customer churn for Saldes Mobil AB](https://github.com/saldes-education/saldes-mobil-churn). It combines data validation, model training and evaluation, model artifact lineage, a FastAPI inference service, Docker packaging, automated CI/CD, and an individually documented Kubernetes deployment mini-project. The repository includes reproducible local commands and automated checks so the pipeline can be inspected without deploying it to a cluster.
 
+## 🏗️ Architecture
+
+<div align="center">
+<img src="docs/architecture.svg" width="100%" alt="Customer Churn MLOps architecture: data validation, model training and quality gates, artifact versioning, Docker packaging, GHCR publishing and Kubernetes deployment" />
+</div>
+
+The diagram shows the full model lifecycle: incoming customer data passes schema and drift validation before training. A candidate must pass the ROC AUC and regression gates before its model artifact is versioned and packaged. CI verifies the Docker image, publishes it to GHCR, and deploys the approved image to Kubernetes. The FastAPI service loads the checksum-verified model for inference.
+
+
 ## 🚀 Quick Start
 
 **Prerequisites:** Python 3.11–3.13 and [uv](https://docs.astral.sh/uv/getting-started/installation/).
