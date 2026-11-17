@@ -39,6 +39,7 @@ jobs:
               - ".dockerignore"
               - ".github/workflows/**"
               - ".github/actions/**"
+              - "k8s/**"
 
   test:
     name: Lint and Test
@@ -257,7 +258,6 @@ jobs:
           name: model-${{ github.sha }}
           path: outputs/
 
-
       - name: Verify approved model integrity
         run: uv run python -m churn.artifact_integrity outputs/model.joblib
 
@@ -319,11 +319,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push Docker image to GHCR (main branch only)
+      - name: Set up QEMU for multi-arch build
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Build and Push multi-arch Docker image to GHCR (main branch only)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
-          docker push "${{ env.IMAGE_NAME }}:${{ github.sha }}"
-          docker push "${{ env.IMAGE_NAME }}:latest"
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --cache-from type=gha \
+            --push \
+            -t "${{ env.IMAGE_NAME }}:${{ github.sha }}" \
+            -t "${{ env.IMAGE_NAME }}:latest" \
+            .
 
   ci-complete:
     name: CI Status Check
@@ -387,3 +396,33 @@ jobs:
         with:
           name: call-list-${{ github.sha }}
           path: outputs/call_list.csv
+
+  deploy:
+    name: Deploy to Kubernetes (Production)
+    needs: [package, ci-complete]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure Kubeconfig and Deploy
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+          IMAGE_TAG: ghcr.io/${{ github.repository }}/churn-api:${{ github.sha }}
+        run: |
+          mkdir -p ~/.kube
+          echo "$KUBE_CONFIG" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+          IMAGE_LOWER=$(echo "$IMAGE_TAG" | tr '[:upper:]' '[:lower:]')
+          sed -i "s|image: .*|image: ${IMAGE_LOWER}|g" k8s/deployment.yaml
+
+          kubectl apply -f k8s/ -n erfan-tahmasbikondroodi
+          kubectl rollout status deployment/saldes-deployment -n erfan-tahmasbikondroodi --timeout=180s
+          kubectl get pods,svc,ingress -n erfan-tahmasbikondroodi
+          echo "Deployed URL: https://erfan-tahmasbikondroodi.89-167-53-206.sslip.io/health"
+          echo "### 🌐 Deployed Ingress URL: https://erfan-tahmasbikondroodi.89-167-53-206.sslip.io/health" >> "$GITHUB_STEP_SUMMARY"
+          
+

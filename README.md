@@ -1,29 +1,39 @@
-# CI/CD - Pipeline
+<div align="center">
 
-This repository contains the MLOps pipeline for predicting [customer churn for Saldes Mobil AB](https://github.com/saldes-education/saldes-mobil-churn).
-It includes data validation, model training, and an automated CI/CD pipeline.
+<img src="assets/erfan-customer-churn-mlops-banner.svg" alt="Customer Churn MLOps — Erfan Tahmasebi" width="100%" />
 
-## 🚀 Quick Start (Local Setup)
+</div>
 
-This project uses `uv` for lightning-fast dependency management. To set up your local environment:
+# Customer Churn MLOps — FastAPI, Docker & Kubernetes
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/LeoLindqvist123/ci-cd-pipeline.git
-   cd ci-cd-pipeline
-   ```
-2. Sync the environment and install all dependencies (including dev, data and MLflow tracking tools):
-   ```bash
-   uv sync --all-extras
-   ```
-3. Run your tests or scripts directly using `uv run`:
+An educational MLOps project for predicting [customer churn for Saldes Mobil AB](https://github.com/saldes-education/saldes-mobil-churn). It combines data validation, model training and evaluation, model artifact lineage, a FastAPI inference service, Docker packaging, automated CI/CD, and an individually documented Kubernetes deployment mini-project. The repository includes reproducible local commands and automated checks so the pipeline can be inspected without deploying it to a cluster.
+
+## 🚀 Quick Start
+
+**Prerequisites:** Python 3.11–3.13 and [uv](https://docs.astral.sh/uv/getting-started/installation/).
+
+Clone this repository (not the original team repository), then install the locked dependencies:
 
 ```bash
-#Example run command
-uv run pytest
+git clone https://github.com/erfantk25-lab/fastapi-docker-ml-serving.git
+cd fastapi-docker-ml-serving
+uv sync --all-extras
+```
 
+Run the same code-quality and test checks used in CI:
+
+```bash
+uv run ruff check .
+uv run pytest
+```
+
+Train the model and generate its local artifacts:
+
+```bash
 uv run python -m churn.model
 ```
+
+The training step creates the model and metrics under `outputs/`. Start the API after training using the command in the [FastAPI section](#fastapi).
 ## FastAPI
 
 The API predicts customer churn using the trained model.
@@ -331,7 +341,7 @@ docker rm -f churn-test-service
 In `.github/workflows/ci.yml`, the `package` job runs after `evaluate`:
 1. Downloads the approved `model-<sha>` artifact.
 2. Builds the Docker image and runs `tests/smoke_test.py` against the live container.
-3. On `push` events to `main`, pushes the verified image to `ghcr.io/leolindqvist123/ci-cd-pipeline/churn-api` tagged with both `<commit-sha>` and `latest`.
+3. On `push` events to `main`, pushes the verified image to `ghcr.io/erfantk25-lab/fastapi-docker-ml-serving/churn-api` tagged with both `<commit-sha>` and `latest`.
 
 ### 🚀 Docker Optimization & Resource Management (VG)
 To improve operational reliability, container security, and CI resource utilization, the container deployment pipeline was upgraded:
@@ -473,3 +483,36 @@ This project is collaboratively developed by:
 * [Erfan Tahmasebi](https://github.com/erfantk25-lab)
 * [Leo Lindqvist Kröhnert](https://github.com/LeoLindqvist123)
 * [Josefin Lesley](https://github.com/Josefin3647)
+
+---
+
+## Kubernetes Deployment & CD (Mini-Project)
+
+In this individual mini-project, the CI/CD pipeline has been extended to production in Kubernetes, running both locally in `kind` and in the course cloud cluster (`mlops-ht26`, namespace `erfan-tahmasbikondroodi`).
+
+### 1. Kubernetes Manifests (`k8s/`)
+- **Immutable Image Tagging (Commit SHA):** The container image in `k8s/deployment.yaml` is pinned to the 40-character commit SHA (`ghcr.io/erfantk25-lab/deployment-i-containeriserad-miljo/churn-api:<commit-sha>`), never `latest`.
+- **Resource Limits & Quota (`student-quota`):** Each pod requests `cpu: 50m, memory: 96Mi` and limits `cpu: 250m, memory: 256Mi`, fitting 2 replicas + 1 surge pod (`150m` CPU, `288Mi` RAM) inside the namespace quota (`250m` CPU / `384Mi` RAM).
+- **Health Probes & Security:** `readinessProbe` and `livenessProbe` query `GET /health` on port `8000`, and `securityContext` enforces `restricted:latest` (`runAsNonRoot: true`, `allowPrivilegeEscalation: false`, `capabilities.drop: ["ALL"]`).
+
+### 2. Multi-Architecture Build (`linux/amd64` & `linux/arm64`)
+Because the cloud worker nodes run on `aarch64` (`linux/arm64`) while local `kind` runs on `x86_64` (`linux/amd64`), the `package` job in `.github/workflows/ci.yml` uses QEMU and Docker Buildx (`--platform linux/amd64,linux/arm64`) so the same image SHA runs in both environments.
+
+### 3. Deployment Strategy (Rolling Update)
+**Selected Strategy:** `RollingUpdate` (`replicas: 2`, `maxUnavailable: 0`, `maxSurge: 1`).
+- **Zero Downtime:** `maxUnavailable: 0` ensures no existing pod is terminated until the new pod passes its `/health` readiness probe, protecting the call list and API consumers.
+- **Quota Efficiency:** Unlike *Blue/Green* (which doubles pod count and exceeds the `384Mi` memory quota) or *Canary* (which requires a service mesh/ingress controller), `RollingUpdate` provides safe incremental rollout and instant rollback (`kubectl rollout undo`) within cluster limits.
+
+### 4. Automated Deployment from the Pipeline (GitHub Actions CD)
+The `deploy` job in `.github/workflows/ci.yml` runs only on pushes to `main` (`if: github.ref == 'refs/heads/main' && github.event_name == 'push'`), requires manual review approval via the `production` GitHub Environment, injects `GITHUB_SHA` into `k8s/deployment.yaml`, and verifies rollout in `erfan-tahmasbikondroodi`.
+
+### 5. Operations, Monitoring, and Drift Management Plan
+1. **Detecting Data Drift:** Batch deliveries are checked via Pandera (`validation/schema.py`) and statistical drift checks (`src/churn/drift.py`, halting if feature means shift > `0.50` SD or new categories appear). In production, `/predict` inputs and predicted probabilities are logged and periodically compared against `data/kundbas.csv`.
+2. **Detecting Model Degradation & Concept Drift:** Pre-deployment candidates must pass both `ROC AUC >= 0.74` (`churn.evaluate`) and `churn.regression_gate` (max `0.020` drop vs `config/model_baseline.json`). Post-deployment, logged predictions are joined with delayed ground-truth outcomes from call-list follow-ups to track realized `ROC AUC`, `Precision`, and `Recall`.
+3. **Response Plan (Alert, Rollback, Retrain):**
+   - **Immediate Post-Release Issue -> Alert & Rollback:** Technical errors, failing `/health` probes, or anomalous prediction distributions trigger an immediate rollback via `kubectl rollout undo deployment/saldes-deployment`.
+   - **Data Drift -> Alert & Retraining:** Verified shifts in customer feature distributions trigger pipeline retraining on fresh data, gated by `evaluate` and `regression_gate`.
+   - **Concept Drift -> Algorithm Upgrade:** If retraining `LogisticRegression` on fresh data fails quality gates due to changing customer behavior, we evaluate switching to a non-linear model (e.g., `HistGradientBoostingClassifier` or `RandomForestClassifier` in `src/churn/model.py`).
+
+### AI Usage Disclosure
+AI tools were used as a sounding board to structure Kubernetes manifests (`deployment.yaml`, `service.yaml`) within `student-quota`, diagnose the `aarch64` vs `x86_64` architecture mismatch (`exec format error`) and configure multi-arch Buildx builds in GitHub Actions, and refine the documentation. All configurations, rollouts, and rollbacks were tested and verified in both `kind` and the course cluster.
