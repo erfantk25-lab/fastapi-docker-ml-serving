@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="760" viewBox="0 0 1600 760" role="img" aria-labelledby="title desc">
+<title id="title">Customer Churn MLOps architecture</title>
+<desc id="desc">Customer data is validated with Pandera and drift checks, tested and used for model training. Evaluation gates approve versioned model artifacts, which are packaged into Docker, published to GHCR and deployed to Kubernetes after environment approval. FastAPI serves predictions from the verified model. MLflow tracking and registry are optional.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#061426"/><stop offset="1" stop-color="#0b2c49"/></linearGradient>
+  <linearGradient id="node" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#123653"/><stop offset="1" stop-color="#0a2037"/></linearGradient>
+  <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#8adfff" stroke-opacity=".055"/></pattern>
+  <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L9 5L0 10" fill="none" stroke="#26d9f4" stroke-width="1.7"/></marker>
+  <style>
+    .eyebrow{font:700 13px Inter,Segoe UI,Arial;letter-spacing:3px;fill:#31d9f3}
+    .heading{font:700 28px Inter,Segoe UI,Arial;fill:#f3f8ff}
+    .sub{font:14px Inter,Segoe UI,Arial;fill:#aac3d8}
+    .number{font:700 12px Inter,Segoe UI,Arial;fill:#36dff5}
+    .label{font:700 17px Inter,Segoe UI,Arial;fill:#f5f9ff}
+    .detail{font:13px Inter,Segoe UI,Arial;fill:#aec4d6}
+    .minor{font:12px Inter,Segoe UI,Arial;fill:#8aaac1}
+    .node{fill:url(#node);stroke:#167ba0;stroke-width:1.5}
+    .flow{fill:none;stroke:#26d9f4;stroke-width:2.4;marker-end:url(#arrow)}
+    .dash{fill:none;stroke:#8da9c3;stroke-width:1.7;stroke-dasharray:7 7}
+  </style>
+</defs>
+<rect width="1600" height="760" rx="26" fill="url(#bg)"/><rect width="1600" height="760" rx="26" fill="url(#grid)"/>
+<text x="54" y="54" class="eyebrow">ERFAN TAHMASEBI · MLOPS ENGINEERING</text>
+<text x="54" y="98" class="heading">Customer Churn — end-to-end MLOps architecture</text>
+<text x="54" y="127" class="sub">A gated model lifecycle from incoming customer data to a deployed prediction API</text>
+<text x="54" y="176" class="eyebrow">01 / DATA, TRAINING &amp; MODEL GOVERNANCE</text>
+
+<g>
+  <rect class="node" x="54" y="202" width="270" height="172" rx="16"/>
+  <text x="76" y="232" class="number">01 · INPUT</text><text x="76" y="270" class="label">Customer data</text>
+  <text x="76" y="302" class="detail">kundbas.csv</text><text x="76" y="326" class="detail">New delivery + reference data</text><text x="76" y="350" class="minor">CSV batch inputs</text>
+
+  <rect class="node" x="366" y="202" width="270" height="172" rx="16"/>
+  <text x="388" y="232" class="number">02 · VALIDATE</text><text x="388" y="270" class="label">Data quality gates</text>
+  <text x="388" y="302" class="detail">Pandera schema validation</text><text x="388" y="326" class="detail">Statistical drift checks</text><text x="388" y="350" class="minor">Invalid or shifted data stops CI</text>
+
+  <rect class="node" x="678" y="202" width="270" height="172" rx="16"/>
+  <text x="700" y="232" class="number">03 · BUILD</text><text x="700" y="270" class="label">Test &amp; train</text>
+  <text x="700" y="302" class="detail">Automated tests + sklearn pipeline</text><text x="700" y="326" class="detail">Feature processing and fitting</text><text x="700" y="350" class="minor">GitHub Actions CI</text>
+
+  <rect class="node" x="990" y="202" width="270" height="172" rx="16"/>
+  <text x="1012" y="232" class="number">04 · EVALUATE</text><text x="1012" y="270" class="label">Quality &amp; regression gates</text>
+  <text x="1012" y="302" class="detail">ROC AUC ≥ 0.74</text><text x="1012" y="326" class="detail">Baseline regression tolerance ≤ 0.020</text><text x="1012" y="350" class="minor">Only approved candidates continue</text>
+
+  <rect class="node" x="1302" y="202" width="244" height="172" rx="16"/>
+  <text x="1324" y="232" class="number">05 · REGISTER</text><text x="1324" y="270" class="label">Versioned artifact</text>
+  <text x="1324" y="302" class="detail">model.joblib + metrics.json</text><text x="1324" y="326" class="detail">Commit/data lineage + SHA-256</text><text x="1324" y="350" class="minor">Optional MLflow registry</text>
+</g>
+<g class="flow">
+  <path d="M324 288H357"/><path d="M636 288H669"/><path d="M948 288H981"/><path d="M1260 288H1293"/>
+</g>
+
+<path d="M1424 374V432H1424V470" class="flow"/>
+<text x="54" y="452" class="eyebrow">02 / RELEASE &amp; RUNTIME</text>
+<g>
+  <rect class="node" x="1110" y="490" width="390" height="170" rx="16"/>
+  <text x="1134" y="521" class="number">06 · PACKAGE</text><text x="1134" y="560" class="label">Docker image + smoke test</text>
+  <text x="1134" y="592" class="detail">Multi-stage, non-root runtime</text><text x="1134" y="616" class="detail">Health check on /health</text><text x="1134" y="640" class="minor">Verified image build in CI</text>
+
+  <rect class="node" x="606" y="490" width="390" height="170" rx="16"/>
+  <text x="630" y="521" class="number">07 · PUBLISH</text><text x="630" y="560" class="label">GitHub Container Registry</text>
+  <text x="630" y="592" class="detail">Published on pushes to main</text><text x="630" y="616" class="detail">Commit-SHA image tags</text><text x="630" y="640" class="minor">GHCR</text>
+
+  <rect class="node" x="102" y="490" width="390" height="170" rx="16"/>
+  <text x="126" y="521" class="number">08 · DEPLOY</text><text x="126" y="560" class="label">Kubernetes service</text>
+  <text x="126" y="592" class="detail">Rolling update · 2 replicas</text><text x="126" y="616" class="detail">Readiness/liveness probes</text><text x="126" y="640" class="minor">GitHub Environment approval</text>
+</g>
+<g class="flow"><path d="M1110 575H1005"/><path d="M606 575H501"/></g>
+<text x="54" y="704" class="sub">Serving: FastAPI exposes GET /health and POST /predict. The API verifies the model checksum before loading the approved artifact.</text>
+<text x="1544" y="735" text-anchor="end" class="minor">CI QUALITY GATES → IMMUTABLE ARTIFACT → CONTROLLED RELEASE</text>
+</svg>
