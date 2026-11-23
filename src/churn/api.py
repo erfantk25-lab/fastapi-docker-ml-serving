@@ -115,4 +115,7 @@ def demo() -> HTMLResponse:
     """Serve the browser-based customer churn demo."""
     if not DEMO_PAGE.is_file():
         raise HTTPException(status_code=404, detail="Demo page is unavailable.")
-    return HTMLResponse(content=DEMO_PAGE.read_text(encoding="utf-8"))
+    return HTMLResponse(
+        content=DEMO_PAGE.read_text(encoding="utf-8"),
+        headers={"Cache-Control": "no-store"},
+    )
