@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="300" viewBox="0 0 1000 300" role="img" aria-labelledby="title desc">
+  <title id="title">Customer churn model evaluation</title>
+  <desc id="desc">Seed 42 ROC AUC 0.789, 30-seed mean 0.783 plus or minus 0.020, observed range 0.746 to 0.836, CI gate 0.740.</desc>
+  <defs><linearGradient id="bar" x1="0" x2="1"><stop offset="0" stop-color="#42d9f5"/><stop offset="1" stop-color="#36d399"/></linearGradient></defs>
+  <rect width="1000" height="300" rx="22" fill="#071426"/>
+  <text x="34" y="42" fill="#42d9f5" font-family="Arial,sans-serif" font-size="14" font-weight="700" letter-spacing="2">MODEL PERFORMANCE · HELD-OUT TEST SPLIT</text>
+  <text x="34" y="112" fill="#f2f7fc" font-family="Arial,sans-serif" font-size="54" font-weight="700">0.789</text>
+  <text x="36" y="140" fill="#9ab0c4" font-family="Arial,sans-serif" font-size="15">Seed-42 reference ROC AUC</text>
+  <rect x="36" y="164" width="440" height="12" rx="6" fill="#1b344e"/>
+  <rect x="36" y="164" width="347.2" height="12" rx="6" fill="url(#bar)"/>
+  <line x1="361.6" y1="155" x2="361.6" y2="185" stroke="#fbbf24" stroke-width="2"/>
+  <text x="36" y="208" fill="#9ab0c4" font-family="Arial,sans-serif" font-size="12">0.00</text>
+  <text x="361.6" y="208" text-anchor="middle" fill="#fbbf24" font-family="Arial,sans-serif" font-size="12">CI gate 0.740</text>
+  <text x="476" y="208" text-anchor="end" fill="#9ab0c4" font-family="Arial,sans-serif" font-size="12">1.00</text>
+  <g transform="translate(540 76)">
+    <rect width="205" height="145" rx="16" fill="#102b49" stroke="#29445e"/>
+    <text x="20" y="34" fill="#9ab0c4" font-family="Arial,sans-serif" font-size="13">30-seed mean</text>
+    <text x="20" y="78" fill="#f2f7fc" font-family="Arial,sans-serif" font-size="30" font-weight="700">0.783</text>
+    <text x="20" y="111" fill="#42d9f5" font-family="Arial,sans-serif" font-size="14">± 0.020</text>
+  </g>
+  <g transform="translate(770 76)">
+    <rect width="194" height="145" rx="16" fill="#102b49" stroke="#29445e"/>
+    <text x="20" y="34" fill="#9ab0c4" font-family="Arial,sans-serif" font-size="13">30-seed range</text>
+    <text x="20" y="78" fill="#f2f7fc" font-family="Arial,sans-serif" font-size="28" font-weight="700">0.746–0.836</text>
+    <text x="20" y="111" fill="#9ab0c4" font-family="Arial,sans-serif" font-size="12">split sensitivity</text>
+  </g>
+  <text x="36" y="270" fill="#9ab0c4" font-family="Arial,sans-serif" font-size="12">Project reference values · threshold-specific accuracy, precision, recall and F1 are generated per training run.</text>
+</svg>
