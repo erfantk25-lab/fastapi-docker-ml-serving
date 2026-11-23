@@ -130,7 +130,13 @@ CI expects the reference dataset to pass, a known-invalid delivery to fail schem
 
 </div>
 
-<div align="center">\n\n<img src="docs/model_performance.svg" width="100%" alt="Visual summary of seed-42 ROC AUC, 30-seed mean and range, and CI quality gate" />\n\n</div>\n\nThe seed-42 reference is stored in `config/model_baseline.json`; split variation is analysed in `analysis/seed_variance.py`. CI blocks candidates below 0.740 or more than 0.020 below the 0.789 reference.
+<div align="center">
+
+<img src="docs/model_performance.svg" width="100%" alt="Visual summary of seed-42 ROC AUC, 30-seed mean and range, and CI quality gate" />
+
+</div>
+
+The seed-42 reference is stored in `config/model_baseline.json`; split variation is analysed in `analysis/seed_variance.py`. CI blocks candidates below 0.740 or more than 0.020 below the 0.789 reference.
 
 Accuracy and threshold-specific precision, recall and F1 (thresholds 0.3–0.7) are recalculated on every training run. Generate a visual report from the current `outputs/metrics.json`:
 
