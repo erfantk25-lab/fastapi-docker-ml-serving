@@ -1,7 +1,9 @@
 """Capture screenshots and a short GIF from the live FastAPI browser demo.
 
-Start the API with a freshly trained model, then run:
-    uv run --extra demo-capture python scripts/capture_demo.py
+Start the API with a freshly trained model, install Playwright and Pillow in the project environment, then run:
+    uv pip install playwright pillow
+    uv run python -m playwright install chromium
+    uv run python scripts/capture_demo.py
 """
 from __future__ import annotations
 
