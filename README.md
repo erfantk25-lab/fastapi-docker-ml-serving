@@ -85,11 +85,11 @@ The prefilled values are illustrative. Use fictional data only; this is an educa
 Capture the browser before and after a real API prediction. Install the optional tools once:
 
 ```bash
-uv sync --extra demo-capture
+python -m pip install playwright pillow
 uv run python -m churn.model
 uv run uvicorn churn.api:app --reload
 # In another terminal:
-uv run python -m playwright install chromium
+python -m playwright install chromium
 uv run python scripts/capture_demo.py
 ```
 
