@@ -29,7 +29,7 @@ An educational MLOps project for predicting [customer churn for Saldes Mobil AB]
 <img src="docs/architecture.svg" width="100%" alt="Customer Churn MLOps architecture: data validation, model training and quality gates, artifact versioning, Docker packaging, GHCR publishing and Kubernetes deployment" />
 </div>
 
-The diagram shows the full model lifecycle: incoming customer data passes schema and drift validation before training. A candidate must pass the ROC AUC and regression gates before its model artifact is versioned and packaged. CI verifies the Docker image, publishes it to GHCR, and deploys the approved image to Kubernetes. The FastAPI service loads the checksum-verified model for inference.
+Data is validated before training. CI gates model quality, versions approved artifacts, builds and smoke-tests the Docker image, then publishes and deploys it. FastAPI verifies the model checksum before inference.
 
 
 ## 🚀 Quick Start
@@ -57,7 +57,7 @@ Train the model and generate its local artifacts:
 uv run python -m churn.model
 ```
 
-The training step creates the model and metrics under `outputs/`. Start the API after training using the command in the [FastAPI section](#fastapi).
+Training writes `outputs/model.joblib` and `outputs/metrics.json`.
 ## FastAPI
 
 The API predicts customer churn using the trained model.
@@ -80,36 +80,20 @@ After training the model and starting the API, open [http://127.0.0.1:8000/demo]
 
 The prefilled values are illustrative. Use fictional data only; this is an educational model demonstration, not a production decision tool.
 
-### Demo screenshots
+### Real demo captures
 
-The following screenshots show the existing FastAPI request/response flow:
-
-<div align="center">
-
-**Request**
-
-<img src="docs/fastapi_prediction_prompt.png" width="88%" alt="FastAPI prediction request with fictional customer values" />
-
-**Response**
-
-<img src="docs/fastapi_prediction_response.png" width="88%" alt="FastAPI prediction response showing predicted churn class and probability" />
-
-</div>
-
-To capture the interactive browser UI and create a short before/after prediction GIF from a **running API with a trained model**, follow the [demo capture instructions](#capture-real-demo-screenshots-and-gif). The generated files are deliberately not committed as pre-made results: they must come from a real successful prediction.
-
-#### Capture real demo screenshots and GIF
+Capture the browser before and after a real API prediction. Install the optional tools once:
 
 ```bash
+uv sync --extra demo-capture
 uv run python -m churn.model
 uv run uvicorn churn.api:app --reload
-# In a second terminal:
-python -m pip install playwright pillow
-python -m playwright install chromium
-python scripts/capture_demo.py
+# In another terminal:
+uv run python -m playwright install chromium
+uv run python scripts/capture_demo.py
 ```
 
-The script writes `docs/demo_input.png`, `docs/demo_prediction.png` and `docs/demo_prediction.gif`. It stops if the API/model is unavailable or the live prediction fails.
+The script saves `docs/demo_input.png`, `docs/demo_prediction.png` and `docs/demo_prediction.gif`. It refuses to save a result if the live API/model is unhealthy or the prediction fails. Commit the generated files to make the screenshots and GIF visible in this README.
 
 Run API tests:
 
@@ -119,7 +103,7 @@ uv run pytest tests/test_api.py
 
 ## ✅ Data Validation
 
-The data is validated against a Pandera schema (`validation/schema.py`) in CI. To run it locally:
+Pandera schema checks and statistical drift checks run before training in CI. Run schema validation locally:
 
 ```bash
 uv run python validation/schema.py [path/to/file.csv]
@@ -130,42 +114,31 @@ If no file is given, `data/kundbas.csv` is used. For example, to validate a new 
 uv run python validation/schema.py data/kundbas_ny_leverans.csv
 ```
 
-If validation fails, the script lists errors per column and check with a few examples, and exits with code 1, which fails the CI pipeline.
-
-In CI, the `validate` job checks both data files in parallel:
-
-- `kundbas.csv` must **pass**.
-- `kundbas_ny_leverans.csv` must **fail**. It is a known-bad delivery that proves the schema catches errors.
-- `kundbas_drift_leverans.csv` must pass schema validation but fail the drift check.
-
-The validation job verifies that valid data passes schema validation and known-invalid data is rejected. These checks run before model training.
-The `train` job depends on both `test` and `validate` through
-`needs: [test, validate]`. This ensures that model training only
-starts when both jobs have succeeded.
+CI expects the reference dataset to pass, a known-invalid delivery to fail schema validation, and a drifted delivery to fail the drift gate. Any unexpected result blocks training.
 
 ## 📊 Model Performance
 
 <div align="center">
 
-| Metric | Result | Meaning |
-|---|---:|---|
-| **ROC AUC — seed 42 baseline** | **0.789** | Ranking quality on the held-out test split |
-| 30-seed mean ROC AUC | 0.783 ± 0.020 | Mean and standard deviation across split seeds 0–29 |
-| 30-seed observed range | 0.746–0.836 | Variation caused by different train/test splits |
-| CI quality gate | ≥ 0.740 | Absolute minimum before artifact publication |
-| Regression floor | ≥ 0.769 | Baseline 0.789 minus the allowed 0.020 drop |
+| Evaluation | Value |
+|---|---:|
+| **Seed-42 ROC AUC** | **0.789** |
+| 30-seed mean ROC AUC | 0.783 ± 0.020 |
+| 30-seed range | 0.746–0.836 |
+| CI minimum ROC AUC | 0.740 |
+| Regression floor | 0.769 |
 
 </div>
 
-The reference score is stored in `config/model_baseline.json`. The seed-variance experiment is documented in `analysis/seed_variance.py`; it shows why a fixed test split can move ROC AUC even when the model is unchanged.
+The seed-42 reference is stored in `config/model_baseline.json`. The seed experiment is in `analysis/seed_variance.py`. CI blocks candidates below 0.740 or more than 0.020 below the 0.789 reference.
 
-**Other evaluation metrics:** training writes `accuracy` plus precision, recall and F1 at thresholds 0.3, 0.4, 0.5, 0.6 and 0.7 to `outputs/metrics.json`. These threshold-specific values are recalculated on each run, so they are intentionally not presented here as permanent benchmark numbers.
+Accuracy and threshold-specific precision, recall and F1 (thresholds 0.3–0.7) are recalculated on every training run. Generate a visual report from the current `outputs/metrics.json`:
 
-### Threshold and regression policy
+```bash
+uv run python scripts/render_metrics.py
+```
 
-A lower classification threshold generally increases recall and false positives; a higher threshold generally increases precision while potentially missing more churners. Review the generated threshold metrics before choosing an operating point. For rigorous threshold selection, tune on validation data and keep the test set for final evaluation.
-
-CI first enforces **ROC AUC ≥ 0.740**, then checks the candidate against the approved seed-42 baseline (**0.789**, maximum regression **0.020**). Only a candidate passing both gates proceeds to versioning and packaging. The thresholds are project-specific, not universal model-quality standards.
+This creates `docs/model_metrics.svg` with the actual metrics from that run. Do not treat the fixed reference AUC as a guarantee of future model performance.
 
 ## 📦 Model Versioning & Lineage
 
@@ -260,7 +233,7 @@ In `.github/workflows/ci.yml`, the `package` job runs after `evaluate`:
 
 ### 🚀 Docker Optimization & Resource Management
 
-The image uses a multi-stage build, production-only dependencies, a non-root `appuser`, a native `/health` health check and GitHub Actions Buildx layer caching.
+The multi-stage image uses production dependencies, a non-root `appuser`, a `/health` check and Buildx layer caching.
 
 | Metric | Earlier build | Optimized build |
 |---|---:|---:|
