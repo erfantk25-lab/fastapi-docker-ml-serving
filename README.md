@@ -72,6 +72,13 @@ Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) to test the endpoi
 
 - `GET /health` — checks model availability.
 - `POST /predict` — returns a churn prediction and probability.
+- `GET /demo` — serves an interactive browser demo with fictional customer inputs.
+
+### Interactive browser demo
+
+After training the model and starting the API, open [http://127.0.0.1:8000/demo](http://127.0.0.1:8000/demo). The page checks model availability, submits the form to `POST /predict`, and displays the predicted class and probability. It is also included in the Docker image because the runtime copies the complete `src/` directory.
+
+The prefilled values are illustrative. Use fictional data only; this is an educational model demonstration, not a production decision tool.
 
 Run API tests:
 
