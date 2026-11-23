@@ -80,6 +80,37 @@ After training the model and starting the API, open [http://127.0.0.1:8000/demo]
 
 The prefilled values are illustrative. Use fictional data only; this is an educational model demonstration, not a production decision tool.
 
+### Demo screenshots
+
+The following screenshots show the existing FastAPI request/response flow:
+
+<div align="center">
+
+**Request**
+
+<img src="docs/fastapi_prediction_prompt.png" width="88%" alt="FastAPI prediction request with fictional customer values" />
+
+**Response**
+
+<img src="docs/fastapi_prediction_response.png" width="88%" alt="FastAPI prediction response showing predicted churn class and probability" />
+
+</div>
+
+To capture the interactive browser UI and create a short before/after prediction GIF from a **running API with a trained model**, follow the [demo capture instructions](#capture-real-demo-screenshots-and-gif). The generated files are deliberately not committed as pre-made results: they must come from a real successful prediction.
+
+#### Capture real demo screenshots and GIF
+
+```bash
+uv run python -m churn.model
+uv run uvicorn churn.api:app --reload
+# In a second terminal:
+python -m pip install playwright pillow
+python -m playwright install chromium
+python scripts/capture_demo.py
+```
+
+The script writes `docs/demo_input.png`, `docs/demo_prediction.png` and `docs/demo_prediction.gif`. It stops if the API/model is unavailable or the live prediction fails.
+
 Run API tests:
 
 ```bash
