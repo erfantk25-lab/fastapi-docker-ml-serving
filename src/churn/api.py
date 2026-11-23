@@ -8,6 +8,7 @@ from pathlib import Path
 import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from sklearn.pipeline import Pipeline
 
@@ -104,3 +105,14 @@ def predict(customer: CustomerInput) -> dict[str, int | float]:
         "prediction": prediction,
         "churn_probability": round(churn_probability, 6),
     }
+
+
+DEMO_PAGE = Path(__file__).resolve().with_name("demo.html")
+
+
+@app.get("/demo", response_class=HTMLResponse, include_in_schema=False)
+def demo() -> HTMLResponse:
+    """Serve the browser-based customer churn demo."""
+    if not DEMO_PAGE.is_file():
+        raise HTTPException(status_code=404, detail="Demo page is unavailable.")
+    return HTMLResponse(content=DEMO_PAGE.read_text(encoding="utf-8"))
