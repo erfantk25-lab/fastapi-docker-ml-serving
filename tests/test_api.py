@@ -162,3 +162,13 @@ def test_health_returns_503_when_model_checksum_is_invalid(
     # Integrity verification must fail before joblib.load() is called.
     load_mock.assert_not_called()
     assert "Could not load model from" in caplog.text
+
+
+
+def test_demo_page_is_available():
+    response = client.get("/demo")
+
+    assert response.status_code == 200
+    assert "<title>Customer Churn Demo | Erfan Tahmasebi</title>" in response.text
+    assert 'id="prediction-form"' in response.text
+    assert 'fetch("/predict"' in response.text
