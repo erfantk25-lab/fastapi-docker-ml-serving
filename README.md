@@ -85,15 +85,31 @@ The prefilled values are illustrative. Use fictional data only; this is an educa
 Capture the browser before and after a real API prediction. Install the optional tools once:
 
 ```bash
-python -m pip install playwright pillow
+uv pip install playwright pillow
 uv run python -m churn.model
 uv run uvicorn churn.api:app --reload
 # In another terminal:
-python -m playwright install chromium
+uv run python -m playwright install chromium
 uv run python scripts/capture_demo.py
 ```
 
-The script saves `docs/demo_input.png`, `docs/demo_prediction.png` and `docs/demo_prediction.gif`. It refuses to save a result if the live API/model is unhealthy or the prediction fails. Commit the generated files to make the screenshots and GIF visible in this README.
+The script saves `docs/demo_input.png`, `docs/demo_prediction.png` and `docs/demo_prediction.gif`. It refuses to save a result if the live API/model is unhealthy or the prediction fails. CI also captures these files against the container started for its real API smoke test and commits updated captures to `main`.
+
+<div align="center">
+
+**Live demo — input**
+
+<img src="docs/demo_input.png" width="100%" alt="Real browser screenshot of the customer churn demo before prediction" />
+
+**Live demo — prediction result**
+
+<img src="docs/demo_prediction.png" width="100%" alt="Real browser screenshot showing the prediction returned by the running FastAPI model" />
+
+**Prediction flow**
+
+<img src="docs/demo_prediction.gif" width="100%" alt="Short GIF transitioning from customer input to the real prediction result" />
+
+</div>
 
 Run API tests:
 
